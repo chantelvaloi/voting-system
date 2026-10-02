@@ -10,8 +10,10 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const SECURE_COOKIE = process.env.SECURE_COOKIE === '1';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const VOTERS_FILE = path.join(DATA_DIR, 'voters.csv');
+const VOTERS_FILE = process.env.VOTERS_FILE || path.join(DATA_DIR, 'voters.csv');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+const DATABASE_URL = process.env.DATABASE_URL;
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -82,28 +84,60 @@ function getVoters() {
 }
 
 // ---------------------------------------------------------------------------
-// Base de dados (data/db.json)
+// Base de dados: Postgres se DATABASE_URL estiver definido, senão data/db.json
+// O estado vive em memória (uma única instância) e é gravado por inteiro a cada alteração.
 // ---------------------------------------------------------------------------
 
-function loadDb() {
+let db;
+let pool = null;
+
+function emptyDb() {
+  return {
+    settings: { votingOpen: config.votingOpenOnStart, resultsVisible: config.resultsVisibleOnStart },
+    votes: {},
+    sessions: {},
+  };
+}
+
+async function loadDb() {
+  if (DATABASE_URL) {
+    const { Pool } = require('pg');
+    // Os URLs internos do Render (sem domínio) não usam SSL; os externos exigem-no.
+    const host = new URL(DATABASE_URL).hostname;
+    const ssl = host.includes('.') && host !== '127.0.0.1' ? { rejectUnauthorized: false } : false;
+    pool = new Pool({ connectionString: DATABASE_URL, ssl, max: 3 });
+    pool.on('error', (err) => console.error('[postgres]', err.message));
+    await pool.query(`CREATE TABLE IF NOT EXISTS app_state (
+      id integer PRIMARY KEY, data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
+    const { rows } = await pool.query('SELECT data FROM app_state WHERE id = 1');
+    console.log(`[postgres] ligado (${rows[0] ? 'estado carregado' : 'base de dados nova'})`);
+    return rows[0] ? rows[0].data : emptyDb();
+  }
   try {
     return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
-    return {
-      settings: { votingOpen: config.votingOpenOnStart, resultsVisible: config.resultsVisibleOnStart },
-      votes: {},
-      sessions: {},
-    };
+    return emptyDb();
   }
 }
 
-const db = loadDb();
+let saveChain = Promise.resolve();
 
+// Grava em série para que um estado mais antigo nunca substitua um mais recente.
 function saveDb() {
-  const tmp = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-  fs.renameSync(tmp, DB_FILE);
+  if (!pool) {
+    const tmp = `${DB_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+    fs.renameSync(tmp, DB_FILE);
+    return Promise.resolve();
+  }
+  const run = () => pool.query(
+    `INSERT INTO app_state (id, data, updated_at) VALUES (1, $1, now())
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+    [JSON.stringify(db)],
+  );
+  saveChain = saveChain.then(run, run);
+  return saveChain;
 }
 
 function eligibleTeams(voter) {
@@ -181,6 +215,12 @@ function currentVoter(req) {
   if (!session) return null;
   if (Date.now() - session.createdAt > SESSION_TTL_MS) return null;
   return getVoters().get(session.code) || null;
+}
+
+// Atrás de um proxy (Render), o IP real do cliente vem no X-Forwarded-For.
+function clientIp(req) {
+  if (TRUST_PROXY && req.headers['x-forwarded-for']) return String(req.headers['x-forwarded-for']).split(',')[0].trim();
+  return req.socket.remoteAddress;
 }
 
 // Limita tentativas de login falhadas por IP (protege contra adivinhar códigos).
@@ -299,7 +339,7 @@ const routes = {
   }),
 
   'POST /api/login': async (req, res) => {
-    const ip = req.socket.remoteAddress;
+    const ip = clientIp(req);
     if (loginBlocked(ip)) throw new HttpError(429, 'Demasiadas tentativas. Aguarde alguns minutos.');
     const { code } = await readJson(req);
     const voter = getVoters().get(normalizeCode(code));
@@ -311,13 +351,13 @@ const routes = {
     const now = Date.now();
     for (const [k, s] of Object.entries(db.sessions)) if (now - s.createdAt > SESSION_TTL_MS) delete db.sessions[k];
     db.sessions[sid] = { code: voter.code, createdAt: now };
-    saveDb();
+    await saveDb();
     json(res, 200, { voter: publicVoter(voter) }, { 'Set-Cookie': sessionCookie(sid, SESSION_TTL_MS / 1000) });
   },
 
-  'POST /api/logout': (req, res) => {
+  'POST /api/logout': async (req, res) => {
     const sid = parseCookies(req).sid;
-    if (sid && db.sessions[sid]) { delete db.sessions[sid]; saveDb(); }
+    if (sid && db.sessions[sid]) { delete db.sessions[sid]; await saveDb(); }
     json(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0) });
   },
 
@@ -349,7 +389,7 @@ const routes = {
     }
     db.votes[voter.code] = db.votes[voter.code] || {};
     db.votes[voter.code][teamId] = { scores: clean, at: new Date().toISOString() };
-    saveDb();
+    await saveDb();
     broadcast();
     return { ok: true, votes: db.votes[voter.code] };
   },
@@ -395,7 +435,7 @@ const routes = {
     requireAdmin(req);
     const body = await readJson(req);
     for (const key of ['votingOpen', 'resultsVisible']) if (typeof body[key] === 'boolean') db.settings[key] = body[key];
-    saveDb();
+    await saveDb();
     broadcast();
     return { settings: db.settings };
   },
@@ -448,12 +488,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(VOTERS_FILE)) {
-  console.warn('Aviso: data/voters.csv não existe. Gere os códigos com: npm run gerar-codigos');
+async function start() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(VOTERS_FILE)) {
+    console.warn('Aviso: data/voters.csv não existe. Gere os códigos com: npm run gerar-codigos');
+  }
+  getVoters();
+  db = await loadDb();
+  server.listen(PORT, HOST, () => {
+    console.log(`Sistema de votação a correr em http://localhost:${PORT}`);
+  });
 }
-getVoters();
 
-server.listen(PORT, HOST, () => {
-  console.log(`Sistema de votação a correr em http://localhost:${PORT}`);
+start().catch((err) => {
+  console.error('Falha ao arrancar:', err);
+  process.exit(1);
 });
