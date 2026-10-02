@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administração · Votação Hackathon</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container no-print">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Administração</div>
+        <h1>Gestão da votação</h1>
+        <p class="muted">Controle a votação e acompanhe a participação de cada votante.</p>
+      </div>
+      <div class="toolbar">
+        <a class="btn btn-ghost btn-sm" href="/api/admin/export.csv">Exportar votos (CSV)</a>
+        <button class="btn btn-ghost btn-sm" type="button" id="print">Imprimir códigos</button>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <div class="card toggle-card">
+        <div>
+          <h3>Votação aberta</h3>
+          <p>Quando fechada, ninguém pode votar nem alterar avaliações.</p>
+        </div>
+        <label class="switch"><input type="checkbox" id="votingOpen" aria-label="Votação aberta"><span></span></label>
+      </div>
+      <div class="card toggle-card">
+        <div>
+          <h3>Resultados públicos</h3>
+          <p>Desligue para esconder a classificação até ao anúncio dos vencedores.</p>
+        </div>
+        <label class="switch"><input type="checkbox" id="resultsVisible" aria-label="Resultados públicos"><span></span></label>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><div class="k">Concluíram</div><div class="v" id="s-done">–</div></div>
+      <div class="card stat"><div class="k">Em curso</div><div class="v" id="s-partial">–</div></div>
+      <div class="card stat"><div class="k">Ainda não votaram</div><div class="v" id="s-none">–</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input class="input" type="search" id="search" placeholder="Pesquisar nome, código ou equipa" aria-label="Pesquisar">
+      <select class="input" id="filter" aria-label="Filtrar">
+        <option value="">Todos</option>
+        <option value="none">Ainda não votaram</option>
+        <option value="partial">Em curso</option>
+        <option value="done">Concluíram</option>
+        <option value="admin">Administradores</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Equipa</th><th>Progresso</th></tr></thead>
+        <tbody id="voters"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="print-cards" id="print-cards"></div>
+
+  <script src="/app.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "hackathon-votacao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de votação para o Hackathon com resultados em tempo real",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "gerar-codigos": "node scripts/gerar-codigos.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

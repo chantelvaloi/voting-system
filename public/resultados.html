@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resultados · Votação Hackathon</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Em tempo real</div>
+        <h1>Resultados da votação</h1>
+        <p class="muted" id="intro">Média das notas atribuídas por todos os votantes.</p>
+      </div>
+      <span class="badge" id="live"><span class="live-dot off"></span><span>A ligar…</span></span>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><div class="k">Votação</div><div class="v" id="s-status">–</div></div>
+      <div class="card stat"><div class="k">Votantes que concluíram</div><div class="v" id="s-done">–</div></div>
+      <div class="card stat"><div class="k">Votantes que começaram</div><div class="v" id="s-started">–</div></div>
+      <div class="card stat"><div class="k">Avaliações registadas</div><div class="v" id="s-votes">–</div></div>
+    </div>
+
+    <div class="ranking" id="ranking"></div>
+  </main>
+  <script src="/app.js"></script>
+  <script src="/resultados.js"></script>
+</body>
+</html>

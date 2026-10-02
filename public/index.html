@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · Votação Hackathon</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-card">
+      <img class="logo" src="/img/logo.png" alt="MozCyber">
+      <div class="eyebrow" id="event-name">Hackathon</div>
+      <h1>Votação das equipas</h1>
+      <p class="muted">Introduza o seu código pessoal para votar.</p>
+
+      <form id="login-form" novalidate>
+        <label for="code">Código pessoal</label>
+        <input class="input" id="code" name="code" autocomplete="one-time-code" autocapitalize="characters"
+               spellcheck="false" maxlength="12" placeholder="••••••" required autofocus>
+        <div class="alert alert-error" id="error" role="alert" hidden></div>
+        <button class="btn btn-primary" type="submit">Entrar</button>
+      </form>
+
+      <p class="login-foot">Não tem código? Fale com a organização.<br>
+        <a href="/resultados">Ver resultados em tempo real →</a></p>
+    </div>
+  </main>
+  <script src="/app.js"></script>
+  <script src="/login.js"></script>
+</body>
+</html>

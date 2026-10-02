@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Votar · Votação Hackathon</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow" id="greeting">Votação</div>
+        <h1>Avalie as equipas</h1>
+        <p class="muted" id="intro"></p>
+      </div>
+    </div>
+
+    <div class="alert alert-warn" id="closed" hidden>
+      A votação está encerrada. Já não é possível alterar as avaliações.
+    </div>
+
+    <div class="card progress-card">
+      <div class="label"><strong id="progress-count">0 de 0</strong> equipas avaliadas</div>
+      <div class="progress" role="progressbar" aria-label="Progresso da votação" aria-valuemin="0" id="progress"><span></span></div>
+    </div>
+
+    <div class="team-list" id="teams"></div>
+  </main>
+  <script src="/app.js"></script>
+  <script src="/votar.js"></script>
+</body>
+</html>
